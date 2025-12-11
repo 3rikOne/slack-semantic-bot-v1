@@ -13,6 +13,8 @@ app = FastAPI()
 
 class Question(BaseModel):
     message: str
+    channel_id: str
+    user_id: str
 
 # Load FAQ embeddings at startup
 with open("faq_embeddings.json", "r") as f:
