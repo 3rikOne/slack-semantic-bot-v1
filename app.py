@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+import urllib.request
+import urllib.error
 import json
 import numpy as np
 from dotenv import load_dotenv
@@ -19,6 +21,42 @@ async def slack_events(request: Request):
     # Slack URL verification
     if "challenge" in data:
         return {"challenge": data["challenge"]}
+
+    if data.get("type") == "event_callback":
+        event = data.get("event", {})
+
+        # Ignore bot messages (prevents infinite loops)
+        if event.get("bot_id") or event.get("subtype") == "bot_message":
+            return {"ok": True}
+
+        if event.get("type") == "message" and event.get("text") and event.get("channel"):
+            channel = event["channel"]
+            user_text = event["text"]
+
+            token = os.getenv("SLACK_BOT_TOKEN")
+            if not token:
+                return {"ok": True}
+
+            payload = {
+                "channel": channel,
+                "text": f"✅ Bot online. You said: {user_text}",
+            }
+
+            req = urllib.request.Request(
+                "https://slack.com/api/chat.postMessage",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json; charset=utf-8",
+                    "Authorization": f"Bearer {token}",
+                },
+                method="POST",
+            )
+
+            try:
+                with urllib.request.urlopen(req) as resp:
+                    resp.read()
+            except urllib.error.HTTPError:
+                pass
 
     return {"ok": True}
 
