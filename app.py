@@ -32,7 +32,44 @@ faq_embeddings = [np.array(item["embedding"]) for item in faq_data]
 
 def cosine_similarity(a, b):
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+def cosine_similarity(a, b):
+    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
+
+def get_reply(user_text: str) -> str:
+    emb_response = client.embeddings.create(
+        model="text-embedding-3-small",
+        input=user_text
+    )
+    user_emb = np.array(emb_response.data[0].embedding)
+
+    best_sim = -1.0
+    best_item = None
+
+    for item, emb in zip(faq_data, faq_embeddings):
+        sim = cosine_similarity(user_emb, emb)
+        if sim > best_sim:
+            best_sim = sim
+            best_item = item
+
+    if best_sim >= 0.80:
+        return best_item["answer"]
+
+    system_prompt = (
+        "Ak otázka NIE JE pracovná, odpovedz normálne po slovensky.\n"
+        "Ak JE pracovná a nie je vo FAQ, odpovedz presne:\n"
+        "'Nemám k tejto otázke odpoveď v interných FAQ.'"
+    )
+
+    chat = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_text}
+        ]
+    )
+
+    return chat.choices[0].message.content.strip()
 
 def answer_question(user_text: str) -> str:
     # 1) Embed user question
