@@ -23,15 +23,6 @@ SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 app = FastAPI()
-@app.post("/slack/events")
-async def slack_events(request: Request):
-    data = await request.json()
-
-    # Slack URL verification
-    if "challenge" in data:
-        return {"challenge": data["challenge"]}
-
-    return {"ok": True}
 
 # -------------------------
 # FAQ embeddings load
