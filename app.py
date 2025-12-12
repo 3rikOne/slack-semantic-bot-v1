@@ -1,72 +1,29 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from pydantic import BaseModel
 import urllib.request
 import urllib.error
 import json
 import numpy as np
+import os
 from dotenv import load_dotenv
 from openai import OpenAI
-import os
+
+# --------------------------------------------------
+# INIT
+# --------------------------------------------------
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
+
+client = OpenAI(api_key=OPENAI_API_KEY)
 app = FastAPI()
-from fastapi import Request
 
-@app.post("/slack/events")
-async def slack_events(request: Request):
-    data = await request.json()
-    print("SLACK PAYLOAD:", data)
+# --------------------------------------------------
+# LOAD FAQ EMBEDDINGS
+# --------------------------------------------------
 
-    # Slack URL verification
-    if "challenge" in data:
-        return {"challenge": data["challenge"]}
-
-    if data.get("type") == "event_callback":
-        event = data.get("event", {})
-
-        # Ignore bot messages (prevents infinite loops)
-        if event.get("bot_id") or event.get("subtype") == "bot_message":
-            return {"ok": True}
-
-        if event.get("type") == "message" and event.get("text") and event.get("channel"):
-            channel = event["channel"]
-            user_text = event["text"]
-
-            token = os.getenv("SLACK_BOT_TOKEN")
-            if not token:
-                return {"ok": True}
-
-            payload = {
-                "channel": channel,
-                "text": f"✅ Bot online. You said: {user_text}",
-            }
-
-            req = urllib.request.Request(
-                "https://slack.com/api/chat.postMessage",
-                data=json.dumps(payload).encode("utf-8"),
-                headers={
-                    "Content-Type": "application/json; charset=utf-8",
-                    "Authorization": f"Bearer {token}",
-                },
-                method="POST",
-            )
-
-            try:
-                with urllib.request.urlopen(req) as resp:
-                    resp.read()
-            except urllib.error.HTTPError:
-                pass
-
-    return {"ok": True}
-
-class Question(BaseModel):
-    message: str
-    channel_id: str
-    user_id: str
-
-# Load FAQ embeddings at startup
 with open("faq_embeddings.json", "r") as f:
     faq_data = json.load(f)
 
@@ -75,11 +32,12 @@ faq_embeddings = [np.array(item["embedding"]) for item in faq_data]
 def cosine_similarity(a, b):
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
-@app.post("/route")
-def route(question: Question):
-    user_text = question.message
+# --------------------------------------------------
+# CORE LOGIC (FAQ → LLM)
+# --------------------------------------------------
 
-    # 1) Embedding for user question
+def route_logic(user_text: str) -> str:
+    # 1) Embed user question
     emb_response = client.embeddings.create(
         model="text-embedding-3-small",
         input=user_text
@@ -98,16 +56,11 @@ def route(question: Question):
 
     THRESHOLD = 0.80
 
-    # CASE 1 — FAQ known
+    # CASE 1 — FAQ HIT
     if best_sim >= THRESHOLD:
-        return {
-            "source": "faq",
-            "similarity": best_sim,
-            "matched_question": best_item["question"],
-            "reply": best_item["answer"]
-        }
+        return best_item["answer"]
 
-    # CASE 2/3 – No FAQ match → LLM decides work vs non-work
+    # CASE 2/3 — LLM DECISION
     system_prompt = (
         "Si firemný chatbot pre spoločnosť, ktorá rieši dovoz a vývoz áut, logistiku, "
         "zmluvy, fakturáciu a interné procesy.\n\n"
@@ -133,13 +86,67 @@ def route(question: Question):
         ]
     )
 
-    reply_text = chat_response.choices[0].message.content.strip()
+    return chat_response.choices[0].message.content.strip()
 
-    return {
-        "source": "llm",
-        "similarity": best_sim,
-        "reply": reply_text
-    }
+# --------------------------------------------------
+# SLACK EVENTS ENDPOINT
+# --------------------------------------------------
 
+@app.post("/slack/events")
+async def slack_events(request: Request):
+    data = await request.json()
+    print("SLACK EVENT:", data)
 
+    # URL verification
+    if "challenge" in data:
+        return {"challenge": data["challenge"]}
 
+    if data.get("type") != "event_callback":
+        return {"ok": True}
+
+    event = data.get("event", {})
+
+    # Prevent infinite loops
+    if event.get("bot_id") or event.get("subtype") == "bot_message":
+        return {"ok": True}
+
+    if event.get("type") == "message" and event.get("text") and event.get("channel"):
+        channel = event["channel"]
+        user_text = event["text"]
+
+        reply_text = route_logic(user_text)
+
+        payload = {
+            "channel": channel,
+            "text": reply_text
+        }
+
+        req = urllib.request.Request(
+            "https://slack.com/api/chat.postMessage",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json; charset=utf-8",
+                "Authorization": f"Bearer {SLACK_BOT_TOKEN}",
+            },
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(req) as resp:
+                resp.read()
+        except urllib.error.HTTPError as e:
+            print("Slack API error:", e.read())
+
+    return {"ok": True}
+
+# --------------------------------------------------
+# OPTIONAL API ROUTE (Make / Testing)
+# --------------------------------------------------
+
+class Question(BaseModel):
+    message: str
+
+@app.post("/route")
+def route(question: Question):
+    reply = route_logic(question.message)
+    return {"reply": reply}
