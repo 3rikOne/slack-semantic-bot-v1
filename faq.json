@@ -1,11 +1,106 @@
 [
   {
-    "question": "Kto hradí balné náklady pri exporte auta?",
-    "answer": "Balné náklady hradí klient."
+    "question": "Kto hradi balné náklady?",
+    "answer": "Balné náklady su hradene firmou ktora nakupuje aut... exportuje napr. APZ Ventures, Artsy, Magama a iné naše firmy"
   },
   {
-    "question": "Ako vytvorím faktúru a kúpnu zmluvu?",
-    "answer": "Faktúru a kúpnu zmluvu vytvára oddelenie fakturácie."
+    "question": "Kto hradi update GPS? Faktúra Carcoding",
+    "answer": "Update GPS platí vždy APZ Ventures a ten to násled...uruje za sumu 500 eur bez DPH firme, ktorá vozidlo exportuje"
+  },
+  {
+    "question": "Kto hradí prepravu v prípade KO?",
+    "answer": "V pripade KO si to plati firma ktorá vozidlo exportuje"
+  },
+  {
+    "question": "Kto hradí prepravu v prípade importu?",
+    "answer": "V pripade importu si to plati firma ktorá vozidlo importuje"
+  },
+  {
+    "question": "Koľko je provízia pre sales rep?",
+    "answer": "Provízia je 200 eur za každé exportované auto"
+  },
+  {
+    "question": "Koľko je provízia pre sales rep v prípade importu?",
+    "answer": "Provízia je 500 eur za každé importované auto"
+  },
+  {
+    "question": "Kde nájdem sales rep report?",
+    "answer": "Sales rep report nájdeš v G-hub CRM v tabulke Sales Rep Report"
+  },
+  {
+    "question": "Kto vystavuje faktúru za predaj vozidla?",
+    "answer": "Faktúru vystavuje oddelenie fakturácie"
+  },
+  {
+    "question": "Kto vytvára kúpnu zmluvu?",
+    "answer": "Kúpnu zmluvu vytvára oddelenie fakturácie"
+  },
+  {
+    "question": "Kto vytvára faktúru a kúpnu zmluvu?",
+    "answer": "Faktúru a kúpnu zmluvu vytvára oddelenie fakturácie"
+  },
+  {
+    "question": "Kto odosiela faktúru a kúpnu zmluvu klientovi?",
+    "answer": "Faktúru a kúpnu zmluvu klientovi odosiela oddelenie fakturácie"
+  },
+  {
+    "question": "Kto odosiela faktúru a kúpnu zmluvu dodávateľovi?",
+    "answer": "Faktúru a kúpnu zmluvu dodávateľovi odosiela oddelenie fakturácie"
+  },
+  {
+    "question": "Kto odosiela faktúru a kúpnu zmluvu kupujúcemu?",
+    "answer": "Faktúru a kúpnu zmluvu kupujúcemu odosiela oddelenie fakturácie"
+  },
+  {
+    "question": "Kto rieši logistiku import?",
+    "answer": "Logistiku import rieši logistické oddelenie"
+  },
+  {
+    "question": "Kto rieši logistiku export?",
+    "answer": "Logistiku export rieši logistické oddelenie"
+  },
+  {
+    "question": "Kto zadáva trasy a km do reportu?",
+    "answer": "Trasy a km do reportu zadáva logistické oddelenie"
+  },
+  {
+    "question": "Kto zadáva dátumy do reportu?",
+    "answer": "Dátumy do reportu zadáva oddelenie fakturácie a logistické oddelenie podľa typu dátumu"
+  },
+  {
+    "question": "Kto zodpovedá za aktualizáciu G-hub CRM?",
+    "answer": "Za aktualizáciu G-hub CRM zodpovedá každý člen tímu podľa svojej role"
+  },
+  {
+    "question": "Kto rieši Intrastat?",
+    "answer": "Intrastat rieši oddelenie fakturácie"
+  },
+  {
+    "question": "Kto zodpovedá za intrastat v reportoch?",
+    "answer": "Za intrastat v reportoch zodpovedá oddelenie fakturácie"
+  },
+  {
+    "question": "Kde nájdem finančný report?",
+    "answer": "Finančný report nájdeš v Google Sheets v súbore Finančný report"
+  },
+  {
+    "question": "Kde nájdem G-hub CRM?",
+    "answer": "G-hub CRM nájdeš v Notion workspace G-hub"
+  },
+  {
+    "question": "Kde sa riešia faktúry?",
+    "answer": "Faktúry sa riešia v Slack kanáli #fakturacia_vyvoz"
+  },
+  {
+    "question": "Kde sa rieši logistika?",
+    "answer": "Logistika sa rieši v Slack kanáli #logistika"
+  },
+  {
+    "question": "Kde sa rieši nákup vozidiel?",
+    "answer": "Nákup vozidiel sa rieši v Slack kanáli #nakup"
+  },
+  {
+    "question": "Kde sa riešia zmluvy?",
+    "answer": "Zmluvy sa riešia v Slack kanáli #zmluvy"
   }
 ]
-
