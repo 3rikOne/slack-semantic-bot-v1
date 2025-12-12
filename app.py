@@ -1,10 +1,7 @@
-<<<<<<< Updated upstream
 import os
-=======
 from fastapi import Request
 from fastapi import FastAPI
 from pydantic import BaseModel
->>>>>>> Stashed changes
 import json
 import time
 import urllib.request
