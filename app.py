@@ -17,6 +17,7 @@ from fastapi import Request
 @app.post("/slack/events")
 async def slack_events(request: Request):
     data = await request.json()
+    print("SLACK PAYLOAD:", data)
 
     # Slack URL verification
     if "challenge" in data:
