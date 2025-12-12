@@ -201,10 +201,10 @@ def handle_message_event(channel: str, text: str):
 @app.post("/slack/events")
 async def slack_events(request: Request, background_tasks: BackgroundTasks):
     data = await request.json()
+
     # Process only events for THIS Slack app
-if data.get("api_app_id") and data.get("api_app_id") != os.getenv("SLACK_APP_ID"):
-    return {"ok": True}
-    # print("SLACK PAYLOAD:", data)
+    if data.get("api_app_id") and data.get("api_app_id") != os.getenv("SLACK_APP_ID"):
+        return {"ok": True}
 
     # Slack URL verification
     # Slack sends: {"type":"url_verification","challenge":"..."}
@@ -228,7 +228,7 @@ if data.get("api_app_id") and data.get("api_app_id") != os.getenv("SLACK_APP_ID"
             channel = event["channel"]
             user_text = event["text"]
 
-            # IMPORTANT: ack immediately, process async (prevents Slack retry spam)
+            # Ack immediately, process async
             background_tasks.add_task(handle_message_event, channel, user_text)
 
     return {"ok": True}
