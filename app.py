@@ -189,6 +189,9 @@ def handle_message_event(channel: str, text: str):
 @app.post("/slack/events")
 async def slack_events(request: Request, background_tasks: BackgroundTasks):
     data = await request.json()
+    # Process only events for THIS Slack app
+if data.get("api_app_id") and data.get("api_app_id") != os.getenv("SLACK_APP_ID"):
+    return {"ok": True}
     # print("SLACK PAYLOAD:", data)
 
     # Slack URL verification
