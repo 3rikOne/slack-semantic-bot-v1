@@ -1,16 +1,18 @@
-from fastapi import FastAPI, Request, BackgroundTasks
-from pydantic import BaseModel
+import os
+import json
+import time
 import urllib.request
 import urllib.error
-import json
+
 import numpy as np
 from dotenv import load_dotenv
 from openai import OpenAI
-import os
+from fastapi import FastAPI, Request, BackgroundTasks
+from pydantic import BaseModel
 
-# -----------------------
+# -------------------------
 # Setup
-# -----------------------
+# -------------------------
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -19,9 +21,9 @@ SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
 client = OpenAI(api_key=OPENAI_API_KEY)
 app = FastAPI()
 
-# -----------------------
-# Load FAQ embeddings at startup
-# -----------------------
+# -------------------------
+# FAQ embeddings load
+# -------------------------
 with open("faq_embeddings.json", "r") as f:
     faq_data = json.load(f)
 
@@ -32,15 +34,8 @@ def cosine_similarity(a, b):
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
 
-def build_reply(user_text: str) -> dict:
-    """
-    Returns a dict with:
-      - source: "faq" or "llm"
-      - similarity: float
-      - reply: str
-      - matched_question: optional
-    """
-    # 1) Embedding for user question
+def answer_question(user_text: str) -> str:
+    # 1) Embed user question
     emb_response = client.embeddings.create(
         model="text-embedding-3-small",
         input=user_text
@@ -61,12 +56,7 @@ def build_reply(user_text: str) -> dict:
 
     # CASE 1 — FAQ known
     if best_sim >= THRESHOLD and best_item:
-        return {
-            "source": "faq",
-            "similarity": best_sim,
-            "matched_question": best_item.get("question", ""),
-            "reply": best_item.get("answer", "")
-        }
+        return best_item["answer"]
 
     # CASE 2/3 — No FAQ match → LLM decides work vs non-work
     system_prompt = (
@@ -94,19 +84,10 @@ def build_reply(user_text: str) -> dict:
         ]
     )
 
-    reply_text = chat_response.choices[0].message.content.strip()
-
-    return {
-        "source": "llm",
-        "similarity": best_sim,
-        "reply": reply_text
-    }
+    return chat_response.choices[0].message.content.strip()
 
 
-def slack_post_message(channel: str, text: str):
-    """
-    Posts a message to Slack channel.
-    """
+def post_to_slack(channel: str, text: str):
     if not SLACK_BOT_TOKEN:
         print("Missing SLACK_BOT_TOKEN env var")
         return
@@ -125,68 +106,92 @@ def slack_post_message(channel: str, text: str):
 
     try:
         with urllib.request.urlopen(req) as resp:
-            raw = resp.read().decode("utf-8")
-            # Optional: log Slack API response if debugging
-            # print("Slack response:", raw)
+            body = resp.read().decode("utf-8")
+            # Helpful if something fails silently:
+            # print("Slack API response:", body)
     except urllib.error.HTTPError as e:
         print("Slack HTTPError:", e.read().decode("utf-8"))
     except Exception as e:
-        print("Slack post error:", str(e))
+        print("Slack post exception:", str(e))
 
 
-def process_slack_message(channel: str, user_text: str):
-    """
-    Runs semantic match + LLM and posts the final reply to Slack.
-    """
-    try:
-        result = build_reply(user_text)
-        reply_text = result["reply"]
-        slack_post_message(channel, reply_text)
-    except Exception as e:
-        print("Processing error:", str(e))
-        slack_post_message(channel, "Nastala chyba pri spracovaní otázky.")
+# -------------------------
+# Dedupe: prevent repeated replies
+# -------------------------
+PROCESSED_EVENTS = {}  # event_id -> timestamp
+DEDUP_TTL_SECONDS = 60 * 10  # keep 10 min
 
 
-# -----------------------
+def seen_event(event_id: str) -> bool:
+    now = time.time()
+
+    # cleanup old
+    for k, ts in list(PROCESSED_EVENTS.items()):
+        if now - ts > DEDUP_TTL_SECONDS:
+            PROCESSED_EVENTS.pop(k, None)
+
+    if not event_id:
+        return False
+
+    if event_id in PROCESSED_EVENTS:
+        return True
+
+    PROCESSED_EVENTS[event_id] = now
+    return False
+
+
+def handle_message_event(channel: str, text: str):
+    # main logic
+    reply = answer_question(text)
+    post_to_slack(channel, reply)
+
+
+# -------------------------
 # Slack Events endpoint
-# -----------------------
+# -------------------------
 @app.post("/slack/events")
 async def slack_events(request: Request, background_tasks: BackgroundTasks):
     data = await request.json()
-    print("SLACK PAYLOAD:", data)
+    # print("SLACK PAYLOAD:", data)
 
     # Slack URL verification
-    if "challenge" in data:
+    # Slack sends: {"type":"url_verification","challenge":"..."}
+    if data.get("type") == "url_verification" and "challenge" in data:
         return {"challenge": data["challenge"]}
 
-    # Handle event callbacks
+    # Event callbacks
     if data.get("type") == "event_callback":
-        event = data.get("event", {})
-
-        # Ignore bot messages (prevents loops)
-        if event.get("bot_id") or event.get("subtype") == "bot_message":
+        event_id = data.get("event_id", "")
+        if seen_event(event_id):
             return {"ok": True}
 
-        # Only handle messages with text in a channel
+        event = data.get("event", {})
+
+        # Ignore bot messages / message subtypes (edits, joins, etc.)
+        if event.get("bot_id") or event.get("subtype"):
+            return {"ok": True}
+
+        # We only care about plain messages
         if event.get("type") == "message" and event.get("text") and event.get("channel"):
             channel = event["channel"]
-            user_text = event["text"].strip()
+            user_text = event["text"]
 
-            # Run processing in background (Slack requires fast response)
-            background_tasks.add_task(process_slack_message, channel, user_text)
+            # IMPORTANT: ack immediately, process async (prevents Slack retry spam)
+            background_tasks.add_task(handle_message_event, channel, user_text)
 
     return {"ok": True}
 
 
-# -----------------------
-# Optional: keep /route for manual testing
-# -----------------------
+# -------------------------
+# Your existing /route API (optional)
+# -------------------------
 class Question(BaseModel):
     message: str
-    channel_id: str = ""
-    user_id: str = ""
+    channel_id: str
+    user_id: str
 
 
 @app.post("/route")
 def route(question: Question):
-    return build_reply(question.message)
+    reply = answer_question(question.message)
+    return {"reply": reply}
