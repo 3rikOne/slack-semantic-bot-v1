@@ -56,9 +56,9 @@ def get_reply(user_text: str) -> str:
             best_item = item
 
     THRESHOLD = 0.60
-if best_sim >= THRESHOLD and best_item:
-    return best_item["answer"]
-
+    if best_sim >= THRESHOLD and best_item:
+        return best_item["answer"]
+      
     system_prompt = (
         "Ak otázka NIE JE pracovná, odpovedz normálne po slovensky.\n"
         "Ak JE pracovná a nie je vo FAQ, odpovedz presne:\n"
