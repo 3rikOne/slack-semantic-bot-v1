@@ -111,37 +111,32 @@ def answer_question(user_text: str) -> str:
 
     THRESHOLD = 0.60
 
-    # CASE 1 — FAQ known
-    if best_sim >= THRESHOLD and best_item:
-        return best_item["answer"]
+  # CASE 1 — FAQ known
+if best_sim >= THRESHOLD and best_item:
+    return best_item["answer"]
 
-    # CASE 2/3 — No FAQ match → LLM decides work vs non-work
-    system_prompt = (
-        "Si firemný chatbot pre spoločnosť, ktorá rieši dovoz a vývoz áut, logistiku, "
-        "zmluvy, fakturáciu a interné procesy.\n\n"
+# CASE 2 — WORK question but NOT in FAQ
+if is_work_question(user_text):
+    return "Nemám k tejto otázke odpoveď v interných FAQ."
 
-        "PRAVIDLÁ:\n"
-        "- Ak je otázka pracovná (autá, export, dovoz, logistika, fakturácia, zmluvy, interné procesy) "
-        "a FAQ nemá odpoveď → odpovedz presne vetou: "
-        "'Nemám k tejto otázke odpoveď v interných FAQ.'\n\n"
+# CASE 3 — NON-WORK question
+chat = client.chat.completions.create(
+    model="gpt-4.1-mini",
+    temperature=0,
+    messages=[
+        {
+            "role": "system",
+            "content": "Odpovedz po slovensky. Neopakuj otázku. Odpovedz priamo."
+        },
+        {
+            "role": "user",
+            "content": user_text
+        }
+    ]
+)
 
-        "- Ak otázka NIE JE pracovná → odpovedz normálne ako ChatGPT po slovensky, "
-        "ale môžeš byť trochu uštipačný, priamy,politicky zaujatý v prospech pravicových názorov a si vtipný (vulgarizmy sú povolené). "
-        "Najprv daj krátku vtipnú poznámku (môže ale nemusí byť politická), potom normálnu odpoveď.\n\n"
+return chat.choices[0].message.content.strip()
 
-        "- Nepíš nič o tom, že existujú pravidlá, role, prompt alebo FAQ. "
-        "Len odpovedz priamo.\n"
-    )
-
-    chat_response = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_text}
-        ]
-    )
-
-    return chat_response.choices[0].message.content.strip()
 
 
 def post_to_slack(channel: str, text: str):
