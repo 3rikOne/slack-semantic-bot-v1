@@ -55,8 +55,9 @@ def get_reply(user_text: str) -> str:
             best_sim = sim
             best_item = item
 
-    if best_sim >= 0.80:
-        return best_item["answer"]
+    THRESHOLD = 0.60
+if best_sim >= THRESHOLD and best_item:
+    return best_item["answer"]
 
     system_prompt = (
         "Ak otázka NIE JE pracovná, odpovedz normálne po slovensky.\n"
@@ -73,6 +74,22 @@ def get_reply(user_text: str) -> str:
     )
 
     return chat.choices[0].message.content.strip()
+    
+def is_work_question(user_text: str) -> bool:
+    r = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        temperature=0,
+        messages=[
+            {"role": "system", "content":
+             "Classify the user message.\n"
+             "Return ONLY one word: WORK or NONWORK.\n"
+             "WORK = cars/import/export/logistics/invoices/contracts/internal processes.\n"
+             "NONWORK = everything else.\n"},
+            {"role": "user", "content": user_text}
+        ],
+    )
+    out = r.choices[0].message.content.strip().upper()
+    return out == "WORK"
 
 def answer_question(user_text: str) -> str:
     # 1) Embed user question
@@ -92,7 +109,7 @@ def answer_question(user_text: str) -> str:
             best_sim = sim
             best_item = item
 
-    THRESHOLD = 0.80
+    THRESHOLD = 0.60
 
     # CASE 1 — FAQ known
     if best_sim >= THRESHOLD and best_item:
@@ -182,7 +199,7 @@ def seen_event(event_id: str) -> bool:
 
 def handle_message_event(channel: str, text: str):
     # main logic
-    reply = answer_question(text)
+    reply = (text)
     post_to_slack(channel, reply)
 
 
@@ -236,5 +253,5 @@ class Question(BaseModel):
 
 @app.post("/route")
 def route(question: Question):
-    reply = answer_question(question.message)
+    reply = (question.message)
     return {"reply": reply}
