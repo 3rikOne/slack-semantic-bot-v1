@@ -92,14 +92,14 @@ def is_work_question(user_text: str) -> bool:
     return out == "WORK"
 
 def answer_question(user_text: str) -> str:
-    # 1) Embed user question
+    # 1) embed user question
     emb_response = client.embeddings.create(
         model="text-embedding-3-small",
         input=user_text
     )
     user_emb = np.array(emb_response.data[0].embedding)
 
-    # 2) Find best FAQ match
+    # 2) find best FAQ match
     best_sim = -1.0
     best_item = None
 
@@ -111,23 +111,34 @@ def answer_question(user_text: str) -> str:
 
     THRESHOLD = 0.60
 
+    # DEBUG — MUST EXIST TEMPORARILY
+    print("DEBUG best_sim:", best_sim)
+    print("DEBUG best_q:", best_item["question"] if best_item else None)
+
     # CASE 1 — FAQ known
     if best_sim >= THRESHOLD and best_item:
         return best_item["answer"]
 
-    # CASE 2 — WORK question but NOT in FAQ
+    # CASE 2 — WORK but not in FAQ
     if is_work_question(user_text):
         return "Nemám k tejto otázke odpoveď v interných FAQ."
 
-    # CASE 3 — NON-WORK question
+    # CASE 3 — NON-WORK → normal LLM reply
     chat = client.chat.completions.create(
         model="gpt-4.1-mini",
         temperature=0,
         messages=[
-            {"role": "system", "content": "Odpovedz po slovensky. Neopakuj otázku. Odpovedz priamo."},
-            {"role": "user", "content": user_text}
-        ],
+            {
+                "role": "system",
+                "content": "Odpovedz po slovensky. Neopakuj otázku. Odpovedz priamo."
+            },
+            {
+                "role": "user",
+                "content": user_text
+            }
+        ]
     )
+
     return chat.choices[0].message.content.strip()
 
 def post_to_slack(channel: str, text: str):
