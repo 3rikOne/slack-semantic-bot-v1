@@ -112,6 +112,8 @@ def answer_question(user_text: str) -> str:
     THRESHOLD = 0.60
 
     # DEBUG — MUST EXIST TEMPORARILY
+    print("FAQ count:", len(faq_data))
+    print("FAQ embeddings count:", len(faq_embeddings))
     print("DEBUG best_sim:", best_sim)
     print("DEBUG best_q:", best_item["question"] if best_item else None)
 
