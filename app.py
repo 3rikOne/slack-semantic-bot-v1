@@ -111,7 +111,7 @@ def answer_question(user_text: str) -> str:
 
     THRESHOLD = 0.60
 
-  # CASE 1 — FAQ known
+# CASE 1 — FAQ known
 if best_sim >= THRESHOLD and best_item:
     return best_item["answer"]
 
