@@ -121,7 +121,7 @@ def answer_question(user_text: str) -> str:
 
     # CASE 2 — WORK but not in FAQ
     if is_work_question(user_text):
-        return "Nemám k tejto otázke odpoveď v interných FAQ."
+        return "Nemám k tejto otázke odpoveď v interných FAQ. [V2-LIVE]"
 
     # CASE 3 — NON-WORK → normal LLM reply
     chat = client.chat.completions.create(
