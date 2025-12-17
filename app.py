@@ -111,33 +111,24 @@ def answer_question(user_text: str) -> str:
 
     THRESHOLD = 0.60
 
-# CASE 1 — FAQ known
-if best_sim >= THRESHOLD and best_item:
-    return best_item["answer"]
+    # CASE 1 — FAQ known
+    if best_sim >= THRESHOLD and best_item:
+        return best_item["answer"]
 
-# CASE 2 — WORK question but NOT in FAQ
-if is_work_question(user_text):
-    return "Nemám k tejto otázke odpoveď v interných FAQ."
+    # CASE 2 — WORK question but NOT in FAQ
+    if is_work_question(user_text):
+        return "Nemám k tejto otázke odpoveď v interných FAQ."
 
-# CASE 3 — NON-WORK question
-chat = client.chat.completions.create(
-    model="gpt-4.1-mini",
-    temperature=0,
-    messages=[
-        {
-            "role": "system",
-            "content": "Odpovedz po slovensky. Neopakuj otázku. Odpovedz priamo."
-        },
-        {
-            "role": "user",
-            "content": user_text
-        }
-    ]
-)
-
-return chat.choices[0].message.content.strip()
-
-
+    # CASE 3 — NON-WORK question
+    chat = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        temperature=0,
+        messages=[
+            {"role": "system", "content": "Odpovedz po slovensky. Neopakuj otázku. Odpovedz priamo."},
+            {"role": "user", "content": user_text}
+        ],
+    )
+    return chat.choices[0].message.content.strip()
 
 def post_to_slack(channel: str, text: str):
     if not SLACK_BOT_TOKEN:
