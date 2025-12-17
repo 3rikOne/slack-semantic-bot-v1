@@ -182,12 +182,9 @@ def seen_event(event_id: str) -> bool:
     PROCESSED_EVENTS[event_id] = now
     return False
 
-
 def handle_message_event(channel: str, text: str):
-    # main logic
-    reply = (text)
+    reply = answer_question(text)
     post_to_slack(channel, reply)
-
 
 # -------------------------
 # Slack Events endpoint
