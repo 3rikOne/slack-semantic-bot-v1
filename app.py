@@ -56,8 +56,8 @@ def get_reply(user_text: str) -> str:
             best_item = item
 
     THRESHOLD = 0.60
-    if best_sim >= THRESHOLD and best_item:
-        return best_item["answer"]
+    if best_sim >= THRESHOLD and best_a:
+        return best_a
       
     system_prompt = (
         "Ak otázka NIE JE pracovná, odpovedz normálne po slovensky.\n"
@@ -99,15 +99,21 @@ def answer_question(user_text: str) -> str:
     )
     user_emb = np.array(emb_response.data[0].embedding)
 
-    # 2) find best FAQ match
-    best_sim = -1.0
-    best_item = None
-
+    # 2) Find best FAQ match (DEBUG: show top 5)
+    scores = []
     for item, emb in zip(faq_data, faq_embeddings):
-        sim = cosine_similarity(user_emb, emb)
-        if sim > best_sim:
-            best_sim = sim
-            best_item = item
+    sim = cosine_similarity(user_emb, emb)
+    scores.append((sim, item.get("question"), item.get("answer")))
+
+    scores.sort(key=lambda x: x[0], reverse=True)
+
+    print("DEBUG user_text:", user_text)
+    for i, (sim, q, a) in enumerate(scores[:5], start=1):
+    print(f"DEBUG top{i} sim={sim:.4f} q={q}")
+
+    best_sim, best_q, best_a = scores[0] if scores else (-1.0, None, None)
+    print("DEBUG best_sim:", best_sim)
+    print("DEBUG best_q:", best_q)
 
     THRESHOLD = 0.60
 
